@@ -14,7 +14,8 @@ import {
   FaLanguage,
   FaUser,
   FaSignOutAlt,
-  FaUserPlus
+  FaUserPlus,
+  FaKey
 } from 'react-icons/fa';
 import './news.css';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -50,6 +51,15 @@ export default function NewsPage() {
   
   // User menu state
   const [showUserMenu, setShowUserMenu] = useState(false);
+  
+  // Change password states
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [updatingPassword, setUpdatingPassword] = useState(false);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -114,6 +124,74 @@ export default function NewsPage() {
       setRecommendedCategory('general');
     } finally {
       setLoadingRecommendations(false);
+    }
+  };
+
+  // Handle change password
+  const handleChangePassword = () => {
+    setShowUserMenu(false);
+    setShowPasswordModal(true);
+    // Reset form
+    setPasswordData({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+  };
+
+  // Handle password form submission
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate form
+    if (!passwordData.newPassword || !passwordData.confirmPassword) {
+      alert('Please fill in all fields');
+      return;
+    }
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      alert('New passwords do not match');
+      return;
+    }
+    
+    if (passwordData.newPassword.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+    
+    setUpdatingPassword(true);
+    
+    try {
+      const response = await fetch(`${url}/update-password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: passwordData.newPassword
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        alert('Password updated successfully!');
+        setShowPasswordModal(false);
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } else {
+        throw new Error(data.message || 'Failed to update password');
+      }
+      
+    } catch (error) {
+      console.error('Error updating password:', error);
+      alert(`Failed to update password: ${error.message}`);
+    } finally {
+      setUpdatingPassword(false);
     }
   };
 
@@ -450,6 +528,13 @@ export default function NewsPage() {
                   </div>
                   <div className="user-dropdown-divider"></div>
                   <button
+                    onClick={handleChangePassword}
+                    className="user-dropdown-item"
+                  >
+                    <FaKey size={16} />
+                    <span>Change Password</span>
+                  </button>
+                  <button
                     onClick={handleSignup}
                     className="user-dropdown-item"
                   >
@@ -653,6 +738,70 @@ export default function NewsPage() {
           </button>
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="password-modal-overlay" onClick={() => setShowPasswordModal(false)}>
+          <div className="password-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="password-header">
+              <h3>Change Password</h3>
+              <button 
+                className="close-button"
+                onClick={() => setShowPasswordModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            
+            <form onSubmit={handlePasswordSubmit} className="password-form">
+              <div className="password-content">
+                <div className="form-group">
+                  <label htmlFor="newPassword">New Password</label>
+                  <input
+                    type="password"
+                    id="newPassword"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                    placeholder="Enter new password"
+                    required
+                    minLength="6"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="confirmPassword">Confirm New Password</label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                    placeholder="Confirm new password"
+                    required
+                    minLength="6"
+                  />
+                </div>
+              </div>
+              
+              <div className="password-footer">
+                <button 
+                  type="button" 
+                  className="cancel-btn"
+                  onClick={() => setShowPasswordModal(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="update-btn"
+                  disabled={updatingPassword}
+                >
+                  {updatingPassword ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Enhanced Summary Modal with Translation */}
       {showSummaryModal && summary && (
